@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -27,6 +28,7 @@ func main() {
 		Reporter: &config.ReporterConfig{
 			LogSpans:            true,
 			BufferFlushInterval: 1 * time.Second,
+			LocalAgentHostPort:  "localhost:5775",
 		},
 	}
 	tracer, closer, _ := cfg.New(
@@ -37,6 +39,7 @@ func main() {
 	defer closer.Close()
 
 	http.Handle("/hello", http.HandlerFunc(HelloHandler))
+	http.Handle("/yyy", http.HandlerFunc(YYYHandler))
 
 	mux := nethttp.Middleware(
 		opentracing.GlobalTracer(),
@@ -58,6 +61,13 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = w.Write([]byte(resp))
+}
+
+func YYYHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	infoCtx(ctx, "calling helloResponse")
+	errorCtx(ctx, fmt.Errorf("this is error"))
+	w.Write([]byte("ok"))
 }
 
 func helloResponse(ctx context.Context, name string) (string, error) {
@@ -84,11 +94,17 @@ func helloResponse(ctx context.Context, name string) (string, error) {
 	return "ok", nil
 }
 
+func errorCtx(ctx context.Context, err error) {
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil {
+		span.LogFields(otlog.Error(err))
+	}
+	log.Println(err.Error())
+}
 func infoCtx(ctx context.Context, msg string) {
 	span := opentracing.SpanFromContext(ctx)
 	if span != nil {
 		span.LogFields(otlog.String("info", msg))
 	}
-
 	log.Println(msg)
 }

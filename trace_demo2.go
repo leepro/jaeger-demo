@@ -34,6 +34,7 @@ func main() {
 		Reporter: &config.ReporterConfig{
 			LogSpans:            true,
 			BufferFlushInterval: 1 * time.Second,
+			LocalAgentHostPort:  "localhost:5775",
 		},
 	}
 	tracer, closer, _ := cfg.New(
@@ -64,6 +65,10 @@ func XXXHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	infoCtx(ctx, "calling YYYHandler")
+	FinalCall(ctx)
+
 	_, _ = w.Write([]byte(resp))
 }
 
@@ -104,4 +109,23 @@ func ClientRPC(ctx context.Context) string {
 	}
 	log.Println("status=", res.Status)
 	return res.Status
+}
+
+func FinalCall(ctx context.Context) error {
+	client := &http.Client{Transport: &nethttp.Transport{}}
+	req, err := http.NewRequest("GET", "http://localhost:5000/yyy?year=2017", nil)
+	if err != nil {
+		return err
+	}
+	req = req.WithContext(ctx)
+	tracer := opentracing.GlobalTracer()
+	req, ht := nethttp.TraceRequest(tracer, req)
+	defer ht.Finish()
+
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	return nil
 }

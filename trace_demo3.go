@@ -4,8 +4,10 @@ import (
 	"context"
 	"log"
 	"net"
+	"net/http"
 	"time"
 
+	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"google.golang.org/grpc"
@@ -32,6 +34,7 @@ func main() {
 		Reporter: &config.ReporterConfig{
 			LogSpans:            true,
 			BufferFlushInterval: 1 * time.Second,
+			LocalAgentHostPort:  "localhost:5775",
 		},
 	}
 	tracer, closer, _ := cfg.New(
@@ -50,7 +53,10 @@ type Server struct {
 func (s *Server) Ping(ctx context.Context, req *svc.PingRequest) (*svc.PingReply, error) {
 	log.Printf("%#v\n", ctx)
 	infoCtx(ctx, "This is actual Ping")
-	return &svc.PingReply{Status: "ok"}, nil
+
+	err := FinalCall(ctx)
+
+	return &svc.PingReply{Status: "ok"}, err
 }
 
 func RPCServer() {
@@ -76,4 +82,23 @@ func infoCtx(ctx context.Context, msg string) {
 	}
 
 	log.Println(msg)
+}
+
+func FinalCall(ctx context.Context) error {
+	client := &http.Client{Transport: &nethttp.Transport{}}
+	req, err := http.NewRequest("GET", "http://localhost:5000/yyy?year=2017", nil)
+	if err != nil {
+		return err
+	}
+	req = req.WithContext(ctx)
+	tracer := opentracing.GlobalTracer()
+	req, ht := nethttp.TraceRequest(tracer, req)
+	defer ht.Finish()
+
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	return nil
 }
