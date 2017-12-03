@@ -2,19 +2,18 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net"
 	"net/http"
 	"time"
 
+	"google.golang.org/grpc"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
-	"google.golang.org/grpc"
-
 	"github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/mwitkow/go-grpc-middleware"
-	//"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 
@@ -25,7 +24,10 @@ const (
 	httpAddr = ":7000"
 )
 
+var JAEGER_AGENT = flag.String("j", "localhost:5775", "jaeger agent")
+
 func main() {
+	flag.Parse()
 	cfg := config.Configuration{
 		Sampler: &config.SamplerConfig{
 			Type:  "const",
@@ -34,7 +36,7 @@ func main() {
 		Reporter: &config.ReporterConfig{
 			LogSpans:            true,
 			BufferFlushInterval: 1 * time.Second,
-			LocalAgentHostPort:  "localhost:5775",
+			LocalAgentHostPort:  *JAEGER_AGENT,
 		},
 	}
 	tracer, closer, _ := cfg.New(

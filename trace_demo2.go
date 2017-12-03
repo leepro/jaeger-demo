@@ -2,19 +2,16 @@ package main
 
 import (
 	"context"
-	"google.golang.org/grpc"
+	"flag"
 	"log"
 	"net/http"
 	"time"
 
-	//	"github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
-	//	"github.com/mwitkow/go-grpc-middleware"
+	"google.golang.org/grpc"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
-
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
-
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 
@@ -25,7 +22,10 @@ const (
 	httpAddr = ":6000"
 )
 
+var JAEGER_AGENT = flag.String("j", "localhost:5775", "jaeger agent")
+
 func main() {
+	flag.Parse()
 	cfg := config.Configuration{
 		Sampler: &config.SamplerConfig{
 			Type:  "const",
@@ -34,7 +34,7 @@ func main() {
 		Reporter: &config.ReporterConfig{
 			LogSpans:            true,
 			BufferFlushInterval: 1 * time.Second,
-			LocalAgentHostPort:  "localhost:5775",
+			LocalAgentHostPort:  *JAEGER_AGENT,
 		},
 	}
 	tracer, closer, _ := cfg.New(
@@ -96,7 +96,7 @@ func ClientRPC(ctx context.Context) string {
 
 	tracer := opentracing.GlobalTracer()
 	opt := grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer))
-	conn, err := grpc.Dial("localhost:7000", opt, grpc.WithInsecure())
+	conn, err := grpc.Dial("alpha:7000", opt, grpc.WithInsecure())
 	if err != nil {
 		log.Printf("Dial Error=%s\n", err.Error())
 		return err.Error()

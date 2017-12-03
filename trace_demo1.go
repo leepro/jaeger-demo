@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
-
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 )
@@ -19,7 +19,10 @@ const (
 	httpAddr = ":5000"
 )
 
+var JAEGER_AGENT = flag.String("j", "localhost:5775", "jaeger agent")
+
 func main() {
+	flag.Parse()
 	cfg := config.Configuration{
 		Sampler: &config.SamplerConfig{
 			Type:  "const",
@@ -28,7 +31,7 @@ func main() {
 		Reporter: &config.ReporterConfig{
 			LogSpans:            true,
 			BufferFlushInterval: 1 * time.Second,
-			LocalAgentHostPort:  "localhost:5775",
+			LocalAgentHostPort:  *JAEGER_AGENT,
 		},
 	}
 	tracer, closer, _ := cfg.New(
