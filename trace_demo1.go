@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	httpAddr = ":8000"
+	httpAddr = ":5000"
 )
 
 func main() {
@@ -37,7 +37,6 @@ func main() {
 	defer closer.Close()
 
 	http.Handle("/hello", http.HandlerFunc(HelloHandler))
-	http.Handle("/xxx", http.HandlerFunc(XXXHandler))
 
 	mux := nethttp.Middleware(
 		opentracing.GlobalTracer(),
@@ -61,25 +60,13 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(resp))
 }
 
-func XXXHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	age := r.URL.Query().Get("age")
-	infoCtx(ctx, "calling xxxHandler")
-	resp, err := xxxResponse(ctx, age)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	_, _ = w.Write([]byte(resp))
-}
-
 func helloResponse(ctx context.Context, name string) (string, error) {
 	infoCtx(ctx, "serving helloResponse")
 	// tag(ctx, "tag", name)
 	// errorCtx(ctx, fmt.Erroorf("this is error %s", name))
 
 	client := &http.Client{Transport: &nethttp.Transport{}}
-	req, err := http.NewRequest("GET", "http://localhost:9000/xxx?age=1975", nil)
+	req, err := http.NewRequest("GET", "http://localhost:6000/xxx?age=20", nil)
 	if err != nil {
 		return "", err
 	}
@@ -95,11 +82,6 @@ func helloResponse(ctx context.Context, name string) (string, error) {
 	res.Body.Close()
 
 	return "ok", nil
-}
-
-func xxxResponse(ctx context.Context, name string) (string, error) {
-	infoCtx(ctx, "this is xxxRequest")
-	return "", nil
 }
 
 func infoCtx(ctx context.Context, msg string) {

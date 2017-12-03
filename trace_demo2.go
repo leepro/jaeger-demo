@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	httpAddr = ":9000"
+	httpAddr = ":6000"
 )
 
 func main() {
@@ -43,7 +43,6 @@ func main() {
 	opentracing.SetGlobalTracer(tracer)
 	defer closer.Close()
 
-	http.Handle("/hello", http.HandlerFunc(HelloHandler))
 	http.Handle("/xxx", http.HandlerFunc(XXXHandler))
 
 	mux := nethttp.Middleware(
@@ -56,18 +55,6 @@ func main() {
 	select {}
 }
 
-func HelloHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	name := r.URL.Query().Get("name")
-	infoCtx(ctx, "calling helloResponse")
-	resp, err := helloResponse(ctx, name)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	_, _ = w.Write([]byte(resp))
-}
-
 func XXXHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	age := r.URL.Query().Get("age")
@@ -78,30 +65,6 @@ func XXXHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = w.Write([]byte(resp))
-}
-
-func helloResponse(ctx context.Context, name string) (string, error) {
-	infoCtx(ctx, "serving helloResponse")
-	// tag(ctx, "tag", name)
-	// errorCtx(ctx, fmt.Erroorf("this is error %s", name))
-
-	client := &http.Client{Transport: &nethttp.Transport{}}
-	req, err := http.NewRequest("GET", "/xxx?age=1975", nil)
-	if err != nil {
-		return "", err
-	}
-	req = req.WithContext(ctx)
-	tracer := opentracing.GlobalTracer()
-	req, ht := nethttp.TraceRequest(tracer, req)
-	defer ht.Finish()
-
-	res, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	res.Body.Close()
-
-	return "ok", nil
 }
 
 func xxxResponse(ctx context.Context, name string) (string, error) {
@@ -127,9 +90,6 @@ func ClientRPC(ctx context.Context) string {
 	log.Printf("%#v\n", ctx)
 
 	tracer := opentracing.GlobalTracer()
-	//	t := grpc_opentracing.UnaryClientInterceptor()
-	//	i := grpc.WithUnaryInterceptor(t)
-	// conn, err := grpc.Dial("localhost:7000", grpc.WithInsecure())
 	opt := grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer))
 	conn, err := grpc.Dial("localhost:7000", opt, grpc.WithInsecure())
 	if err != nil {
