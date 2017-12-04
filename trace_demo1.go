@@ -69,13 +69,14 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 func YYYHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	infoCtx(ctx, "calling helloResponse")
+	tagCtx(ctx, "func", "YYYHandler")
 	errorCtx(ctx, fmt.Errorf("this is error"))
 	w.Write([]byte("ok"))
 }
 
 func helloResponse(ctx context.Context, name string) (string, error) {
 	infoCtx(ctx, "serving helloResponse")
-	// tag(ctx, "tag", name)
+	tagCtx(ctx, "func", "helloResponse")
 	// errorCtx(ctx, fmt.Erroorf("this is error %s", name))
 
 	client := &http.Client{Transport: &nethttp.Transport{}}
@@ -84,6 +85,8 @@ func helloResponse(ctx context.Context, name string) (string, error) {
 		return "", err
 	}
 	req = req.WithContext(ctx)
+	// ct:= req.Context()
+	// tagCtx(ct, "func", "good!")
 	tracer := opentracing.GlobalTracer()
 	req, ht := nethttp.TraceRequest(tracer, req)
 	defer ht.Finish()
@@ -97,6 +100,13 @@ func helloResponse(ctx context.Context, name string) (string, error) {
 	return "ok", nil
 }
 
+func tagCtx(ctx context.Context, key, tag string) {
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil {
+		span.SetTag(key,tag)
+	}
+}
+
 func errorCtx(ctx context.Context, err error) {
 	span := opentracing.SpanFromContext(ctx)
 	if span != nil {
@@ -104,6 +114,7 @@ func errorCtx(ctx context.Context, err error) {
 	}
 	log.Println(err.Error())
 }
+
 func infoCtx(ctx context.Context, msg string) {
 	span := opentracing.SpanFromContext(ctx)
 	if span != nil {
