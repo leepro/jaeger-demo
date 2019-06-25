@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 )
@@ -19,7 +19,7 @@ const (
 	httpAddr = ":5000"
 )
 
-var JAEGER_AGENT = flag.String("j", "localhost:5775", "jaeger agent")
+var JAEGER_AGENT = flag.String("j", "10.0.0.33:5775", "jaeger agent")
 
 func main() {
 	flag.Parse()
@@ -103,7 +103,7 @@ func helloResponse(ctx context.Context, name string) (string, error) {
 func tagCtx(ctx context.Context, key, tag string) {
 	span := opentracing.SpanFromContext(ctx)
 	if span != nil {
-		span.SetTag(key,tag)
+		span.SetTag(key, tag)
 	}
 }
 
